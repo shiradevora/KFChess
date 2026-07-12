@@ -1,3 +1,4 @@
+import pytest
 from board.text_board import TextBoardRepresentation
 
 
