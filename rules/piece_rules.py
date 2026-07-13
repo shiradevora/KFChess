@@ -72,8 +72,12 @@ class PawnMovement(MovementStrategy):
 
     def is_legal(self, dr, dc, context):
         direction = self._directions[context.color]
-        start_row = self._start_rows[context.color]
         sr, _sc = context.start
+
+        if context.color == "w":
+            start_row = 6 if context.board.height == 8 else context.board.height - 1
+        else:
+            start_row = 1 if context.board.height == 8 else 0
 
         if dc == 0:
             if dr == direction and not context.target_occupied:
