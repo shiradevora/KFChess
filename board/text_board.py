@@ -14,7 +14,12 @@ class TextBoardRepresentation(BoardRepresentation):
         self._empty_token = empty_token
         self._height = len(self._cells)
         self._width = len(self._cells[0]) if self._cells else 0
+        
+        self._validate_board_structure()
 
+    def _validate_board_structure(self):
+        if any(len(row) != self._width for row in self._cells):
+            raise ValueError("Jagged board detected! All rows must have the same width.")
     @property
     def width(self):
         return self._width

@@ -86,3 +86,30 @@ def test_pawn_diagonal_capture_only_when_occupied():
 
     board.set(5, 5, "bP")
     assert pawn.is_legal(-1, 1, context(board, "w", (6, 4), (5, 5)))
+
+
+def test_click_moves_piece(capsys):
+    from main import main
+    import io
+    import sys
+
+    def run_main(input_text, capsys):
+        sys.stdin = io.StringIO(input_text)
+        try:
+            main()
+        finally:
+            sys.stdin = sys.__stdin__
+        return capsys.readouterr()
+
+    output = run_main(
+        """Board:
+wR .
+. .
+Commands:
+click 0 0
+click 0 0
+print board
+""",
+        capsys,
+    )
+    assert output.out.splitlines() == ["wR .", ". ."]

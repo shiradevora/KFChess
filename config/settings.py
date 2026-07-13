@@ -18,7 +18,7 @@ COLORS = ("w", "b")
 PAWN_DIRECTION = {"w": -1, "b": 1}
 
 # Starting row (0-indexed) from which each color's pawns may take a double step
-PAWN_START_ROW = {"w": 1, "b": 6}
+PAWN_START_ROW = {"w": 6, "b": 1}
 
 # Token used to represent an empty cell on the board
 EMPTY_CELL = "."

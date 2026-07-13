@@ -1,3 +1,4 @@
+import pytest
 from board.text_board import TextBoardRepresentation
 
 
@@ -33,6 +34,7 @@ def test_in_bounds():
 def test_snapshot_is_a_copy():
     board = make_board()
     snap = board.snapshot()
+    assert snap == [["wK", ".", "bK"], [".", ".", "."]]
     snap[0][0] = "bQ"
     assert board.get(0, 0) == "wK"
 
@@ -41,3 +43,12 @@ def test_empty_board_dimensions():
     board = TextBoardRepresentation([])
     assert board.width == 0
     assert board.height == 0
+
+def test_jagged_board_raises_value_error():
+   
+    jagged_rows = [
+        [".", "wK", "."],
+        ["bR", "."]
+    ]
+    with pytest.raises(ValueError, match="Jagged board detected"):
+        TextBoardRepresentation(jagged_rows)

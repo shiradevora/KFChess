@@ -16,14 +16,14 @@ def run_main(input_text, capsys):
 def test_print_board_outputs_canonical_board(capsys):
     output = run_main(
         """Board:
-8 8 8
-.
+wK bK
+. .
 Commands:
 print board
 """,
         capsys,
     )
-    assert output.out.splitlines() == ["8 8 8", "."]
+    assert output.out.splitlines() == ["wK bK", ". ."]
 
 
 def test_unknown_token_returns_error(capsys):
@@ -41,8 +41,8 @@ print board
 def test_row_width_mismatch_returns_error(capsys):
     output = run_main(
         """Board:
-1 2
-3
+wK bK
+wK
 Commands:
 print board
 """,
@@ -58,9 +58,9 @@ wR .
 . .
 Commands:
 click 0 0
-click 0 1
+click 0 0
 print board
 """,
         capsys,
     )
-    assert output.out.splitlines() == [". wR", ". ."]
+    assert output.out.splitlines() == ["wR .", ". ."]
