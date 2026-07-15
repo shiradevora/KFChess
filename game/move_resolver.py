@@ -15,6 +15,14 @@ class MoveResolver:
     def game_over(self):
         return self._game_over
 
+    @property
+    def active_moves(self):
+        return tuple(self._active_moves)
+
+    @property
+    def active_jumps(self):
+        return tuple(self._active_jumps)
+
     def add_move(self, move: Move):
         self._active_moves.append(move)
 

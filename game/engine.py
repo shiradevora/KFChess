@@ -14,6 +14,25 @@ class GameEngine:
         return self._resolver.game_over
 
     @property
+    def active_moves(self):
+        return self._resolver.active_moves
+
+    @property
+    def active_jumps(self):
+        return self._resolver.active_jumps
+
+    @property
+    def board_height(self):
+        return self._board.height
+
+    @property
+    def board_width(self):
+        return self._board.width
+
+    def snapshot(self):
+        return self._board.snapshot()
+
+    @property
     def clock(self):
         return self._clock
 
