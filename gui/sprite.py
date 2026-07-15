@@ -47,6 +47,7 @@ class PieceSprite:
             f"{token[1]}{_COLOR_SUFFIX[token[0]]}",
             "states"
         )
+        self.token = token
         self._states: dict[str, AnimState] = {
             s: AnimState(os.path.join(folder, s)) for s in STATES
         }
@@ -54,8 +55,14 @@ class PieceSprite:
         self._current = "idle"
         self._state_start_ms = 0.0
 
-    def set_state(self, state: str, clock_ms: float) -> None:
-        if state != self._current:
+    def set_state(self, state: str, clock_ms: float, force: bool = False) -> None:
+        """Transition to `state` at `clock_ms`.
+
+        Ignored if already in that state unless `force=True`, which is
+        used when a piece needs to restart the same animation (e.g. a
+        second long_rest after a second move).
+        """
+        if state != self._current or force:
             self._current = state
             self._state_start_ms = clock_ms
 

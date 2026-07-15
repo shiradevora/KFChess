@@ -51,19 +51,33 @@ class InputHandler:
 
     def _act_on_selection(self, cell, clock):
         start = self._selected
+
+        # Clicking the already-selected cell toggles selection off
+        if cell == start:
+            self._selected = None
+            return
+
         piece = self._board.get(*start)
 
+        # Selected piece has since moved away or is now in transit — clear
         if piece == self._config.EMPTY_CELL or self._resolver.is_busy(start):
             self._selected = None
             return
 
         target = self._board.get(*cell)
+
+        # Clicking a friendly piece — switch selection to it (if not busy)
         if target != self._config.EMPTY_CELL and target[0] == piece[0]:
             if not self._resolver.is_busy(cell):
                 self._selected = cell
+            # If the friendly piece is busy, keep current selection unchanged
             return
 
+        # Clicking an empty square or enemy piece — attempt the move
         if not self._is_legal_move(piece, start, cell):
+            # Illegal move onto empty square deselects; illegal capture keeps selection
+            if target == self._config.EMPTY_CELL:
+                self._selected = None
             return
 
         self._board.set(*start, self._config.EMPTY_CELL)
