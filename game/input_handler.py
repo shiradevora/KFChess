@@ -81,11 +81,13 @@ class InputHandler:
             return
 
         self._board.set(*start, self._config.EMPTY_CELL)
-        self._resolver.add_move(Move(piece, start, cell, clock + self._config.MOVE_DURATION))
+        duration = self._config.move_duration(start, cell)
+        self._resolver.add_move(Move(piece, start, cell, clock, clock + duration))
         self._selected = None
 
     def _is_legal_move(self, piece, start, end):
-        strategy = self._registry.get(piece[1])
+        from rules.piece_type import PieceType
+        strategy = self._registry.get(PieceType.from_token(piece[1]))
         dr, dc = end[0] - start[0], end[1] - start[1]
         context = MoveContext(
             board=self._board,

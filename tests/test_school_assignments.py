@@ -340,10 +340,10 @@ wR . .
 Commands:
 click 50 50
 click 150 50
-wait 1000
+wait 2000
 click 150 50
 click 250 50
-wait 1000
+wait 2000
 print board
 Output = . . wR
 
@@ -353,10 +353,10 @@ wR . .
 Commands:
 click 50 50
 click 150 50
-wait 1000
+wait 2000
 click 150 50
 click 250 50
-wait 1000
+wait 2000
 print board
 Output = . . wR
 
@@ -564,7 +564,7 @@ Input = Board:
 Commands:
 click 150 150
 click 150 50
-wait 1000
+wait 2000
 click 150 50
 click 250 150
 wait 1000

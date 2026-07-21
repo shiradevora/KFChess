@@ -64,7 +64,7 @@ def test_move_lands_after_move_duration_elapses():
     engine.handle_click(*cell_to_pixel(0, 0))
     engine.handle_click(*cell_to_pixel(0, 2))
 
-    engine.wait(settings.MOVE_DURATION)
+    engine.wait(2 * settings.MOVE_DURATION)  # 2-square move takes 2× base duration
     assert board.get(0, 2) == "wR"
 
 
@@ -82,7 +82,7 @@ def test_king_capture_ends_the_game():
     engine, board = make_engine(rows)
     engine.handle_click(*cell_to_pixel(0, 0))
     engine.handle_click(*cell_to_pixel(0, 2))
-    engine.wait(settings.MOVE_DURATION)
+    engine.wait(2 * settings.MOVE_DURATION)  # 2-square move takes 2× base duration
 
     assert engine.game_over is True
 
