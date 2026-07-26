@@ -30,3 +30,8 @@ PAWN_START_ROW = {"w": 6, "b": 1}
 
 # Token used to represent an empty cell on the board
 EMPTY_CELL = "."
+
+# WebSocket server settings
+WS_HOST = "localhost"
+WS_PORT = 8765
+SERVER_TICK_MS = 50

@@ -22,6 +22,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Move:
     piece:       str    # board token, e.g. 'wR'
+    move_id:     str    # stable id, unique within the session's lifetime
     start:       tuple  # (row, col)
     end:         tuple  # (row, col)
     dispatch_ms: float  # clock time when the move was issued
@@ -31,5 +32,6 @@ class Move:
 @dataclass(frozen=True)
 class Jump:
     piece:    str    # board token of the jumping piece
+    jump_id:  str    # stable id, unique within the session's lifetime
     cell:     tuple  # (row, col) cell being defended
     end_time: float  # clock time when the jump expires

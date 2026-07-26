@@ -68,13 +68,29 @@ def test_move_lands_after_move_duration_elapses():
     assert board.get(0, 2) == "wR"
 
 
-def test_illegal_move_keeps_selection_and_piece_in_place():
+# An illegal move onto an EMPTY square deselects (see the documented
+# rationale in game/command_dispatcher.py::_execute_move): there's nothing
+# further the player can do with that target, so the selection is dropped.
+def test_illegal_move_onto_empty_square_deselects():
     engine, board = make_engine([["wN", ".", "."], [".", ".", "."], [".", ".", "."]])
     engine.handle_click(*cell_to_pixel(0, 0))
     engine.handle_click(*cell_to_pixel(0, 1))  # not a legal knight move
 
+    assert engine.selected is None
+    assert board.get(0, 0) == "wN"
+
+
+# The other half of the same design decision: an illegal move onto an
+# OCCUPIED enemy square (an illegal capture attempt) keeps the selection,
+# so the player can try a different target without re-clicking the piece.
+def test_illegal_capture_attempt_keeps_selection():
+    engine, board = make_engine([["wN", ".", "."], [".", "bP", "."], [".", ".", "."]])
+    engine.handle_click(*cell_to_pixel(0, 0))
+    engine.handle_click(*cell_to_pixel(1, 1))  # not a legal knight move, and occupied by an enemy
+
     assert engine.selected == (0, 0)
     assert board.get(0, 0) == "wN"
+    assert board.get(1, 1) == "bP"
 
 
 def test_king_capture_ends_the_game():

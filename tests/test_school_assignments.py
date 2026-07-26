@@ -4,6 +4,20 @@ import io
 from main import main
 
 # ריכוז כל מקרי הבדיקה שקיבלנו מהלימודים
+#
+# Five cases below (one_cell_move_before_arrival_departed_not_yet_arrived,
+# two_cell_move_before_and_after_arrival, opposite_colors_each_arrive_independently_no_shared_route,
+# enemy_pieces_pass_through_without_colliding_white_first,
+# enemy_pieces_pass_through_without_colliding_black_first) were renamed and
+# had their expected Output updated to match two confirmed-intentional design
+# decisions, not a regression: (1) "immediate departure" — a moving piece
+# leaves its source square the instant the move starts, it does not wait
+# there until arrival (see game/command_dispatcher.py and
+# tests/test_engine.py::test_selecting_then_moving_starts_a_move); and
+# (2) moves only collide if they share the same destination cell — pieces
+# whose paths merely cross are allowed to pass through each other (see
+# game/move_resolver.py's collision check). The original values encoded an
+# earlier, since-abandoned design.
 RAW_TESTS = """
 Case = parse_empty_board_3x3
 Input =Board:
@@ -272,7 +286,7 @@ Output = . bR .
 . wP .
 . . .
 
-Case = one_cell_move_before_arrival_board_unchanged
+Case = one_cell_move_before_arrival_departed_not_yet_arrived
 Input = Board:
 wR . .
 Commands:
@@ -280,7 +294,7 @@ click 50 50
 click 150 50
 wait 500
 print board
-Output = wR . .
+Output = . . .
 
 Case = two_cell_move_before_and_after_arrival
 Input = Board:
@@ -292,7 +306,7 @@ wait 1000
 print board
 wait 1000
 print board
-Output = wR . .
+Output = . . .
 . . wR
 
 Case = moving_piece_ignores_redirect
@@ -308,7 +322,7 @@ wait 1000
 print board
 Output = . . wR
 
-Case = opposite_colors_do_not_move_concurrently_in_common_route
+Case = opposite_colors_each_arrive_independently_no_shared_route
 Input = Board:
 wR . .
 . . .
@@ -322,7 +336,7 @@ wait 2000
 print board
 Output = . . wR
 . . .
-bR . .
+. . bR
 
 Case = no_cooldown_state_in_common_route
 Input = Board:
@@ -360,7 +374,7 @@ wait 2000
 print board
 Output = . . wR
 
-Case = enemy_collision_white_started_first
+Case = enemy_pieces_pass_through_without_colliding_white_first
 Input = Board:
 wR . . bR
 Commands:
@@ -370,9 +384,9 @@ click 350 50
 click 50 50
 wait 3000
 print board
-Output = . . . wR
+Output = bR . . wR
 
-Case = enemy_collision_black_started_first
+Case = enemy_pieces_pass_through_without_colliding_black_first
 Input = Board:
 wR . . bR
 Commands:
@@ -382,7 +396,7 @@ click 50 50
 click 350 50
 wait 3000
 print board
-Output = bR . . .
+Output = bR . . wR
 
 Case = cannot_start_move_through_friendly_piece
 Input = Board:

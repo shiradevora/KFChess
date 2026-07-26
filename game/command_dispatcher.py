@@ -27,6 +27,9 @@ converts raw OpenCV mouse events into calls on this class.
 """
 from __future__ import annotations
 
+import itertools
+from typing import Callable
+
 from game.commands import MoveCommand, JumpCommand, SelectCommand
 from game.exceptions import InvalidMoveError
 from game.models import Move, Jump
@@ -35,12 +38,20 @@ from rules.movement_strategy import MoveContext
 
 class CommandDispatcher:
 
-    def __init__(self, board, registry, resolver, config):
-        self._board    = board
-        self._registry = registry
-        self._resolver = resolver
-        self._config   = config
+    def __init__(self, board, registry, resolver, config,
+                 id_factory: Callable[[], str] = None):
+        self._board       = board
+        self._registry    = registry
+        self._resolver    = resolver
+        self._config      = config
         self._selected: tuple | None = None
+        self._id_factory  = id_factory or self._default_id_factory()
+
+    @staticmethod
+    def _default_id_factory():
+        counter = itertools.count(1)
+        while True:
+            yield f"m{next(counter)}"
 
     # ------------------------------------------------------------------
     # Public read-only state
@@ -93,7 +104,7 @@ class CommandDispatcher:
         if piece == self._config.EMPTY_CELL:
             return
         self._resolver.add_jump(
-            Jump(piece, cell, clock_ms + self._config.JUMP_DURATION)
+            Jump(piece, next(self._id_factory), cell, clock_ms + self._config.JUMP_DURATION)
         )
 
     def _execute_action(self, end: tuple, clock_ms: float) -> None:
@@ -136,6 +147,7 @@ class CommandDispatcher:
         duration = self._config.move_duration(cmd.start, cmd.end)
         self._resolver.add_move(Move(
             piece       = piece,
+            move_id     = next(self._id_factory),
             start       = cmd.start,
             end         = cmd.end,
             dispatch_ms = clock_ms,

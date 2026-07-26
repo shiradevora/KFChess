@@ -27,6 +27,8 @@ text-mode main.py continue to work without modification.
 """
 from __future__ import annotations
 
+from typing import Callable
+
 from game.command_dispatcher import CommandDispatcher
 from game.exceptions import GameOverError, InvalidMoveError
 from game.move_resolver import MoveResolver
@@ -35,12 +37,13 @@ from game.state_snapshot import GameStateSnapshot
 
 class GameEngine:
 
-    def __init__(self, board, rule_registry, win_condition, promotion_rule, config):
+    def __init__(self, board, rule_registry, win_condition, promotion_rule, config,
+                 id_factory: Callable[[], str] = None):
         self._board      = board
         self._config     = config
         self._resolver   = MoveResolver(board, win_condition, promotion_rule, config)
         self._dispatcher = CommandDispatcher(
-            board, rule_registry, self._resolver, config
+            board, rule_registry, self._resolver, config, id_factory=id_factory
         )
 
     # ------------------------------------------------------------------
