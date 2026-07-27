@@ -65,6 +65,7 @@ class App:
         self._last_tick = time.monotonic()
 
     def run(self) -> None:
+        # הפרדה!!!
         frame_w = self._engine.board_width  * self._assets.cell_px
         frame_h = self._engine.board_height * self._assets.cell_px
 

@@ -5,7 +5,11 @@
       "Bash(python -m server.server_app)",
       "Bash(python -m client.headless_test_client)",
       "Bash(powershell -Command \"Get-CimInstance Win32_Process -Filter \\\\\"CommandLine LIKE '%server.server_app%'\\\\\" | Select-Object ProcessId,CommandLine\")",
-      "Bash(powershell -Command \"Stop-Process -Id 12124 -Force\")"
+      "Bash(powershell -Command \"Stop-Process -Id 12124 -Force\")",
+      "Bash(python -m pytest tests/test_connection_handler.py -v -W error::pytest.PytestUnraisableExceptionWarning)",
+      "Bash(python -m pytest tests/test_connection_handler.py -v -s)",
+      "Bash(python -m pytest tests/test_server_gateway.py -v -s)",
+      "Bash(python -m pip show pytest-cov)"
     ]
   }
 }

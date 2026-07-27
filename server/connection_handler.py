@@ -19,12 +19,25 @@ from protocol.messages import ClickCommand, ErrorMessage, JumpCommand
 
 async def handle_connection(connection: Connection, session: GameSession,
                              event_bus: EventBus, logger) -> None:
-    loop = asyncio.get_event_loop()
+    outbox: asyncio.Queue = asyncio.Queue()
 
     def _forward(event: object) -> None:
-        loop.create_task(connection.send(encode(event)))
+        outbox.put_nowait(encode(event))
 
     subscription = event_bus.subscribe(f"session:{session.session_id}", _forward)
+
+    async def _writer() -> None:
+        # A single dedicated writer per connection: sends drain the outbox
+        # one at a time, so we never have two concurrent send() calls racing
+        # on the same underlying connection.
+        while True:
+            raw = await outbox.get()
+            try:
+                await connection.send(raw)
+            except ConnectionClosed:
+                return
+
+    writer_task = asyncio.create_task(_writer())
 
     try:
         while True:
@@ -46,3 +59,8 @@ async def handle_connection(connection: Connection, session: GameSession,
                 session.handle_jump(message.x, message.y)
     finally:
         subscription.unsubscribe()
+        writer_task.cancel()
+        try:
+            await writer_task
+        except asyncio.CancelledError:
+            pass

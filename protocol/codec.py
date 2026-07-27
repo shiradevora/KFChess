@@ -7,7 +7,14 @@ from __future__ import annotations
 import dataclasses
 import json
 
-from protocol.messages import ClickCommand, ErrorMessage, JumpCommand
+from protocol.messages import (
+    ClickCommand,
+    ErrorMessage,
+    GameStateEvent,
+    JumpCommand,
+    JumpDTO,
+    MoveDTO,
+)
 
 
 class DecodeError(Exception):
@@ -18,10 +25,46 @@ def encode(message: object) -> str:
     return json.dumps(dataclasses.asdict(message))
 
 
+def _decode_move_dto(data: dict) -> MoveDTO:
+    return MoveDTO(
+        move_id=data["move_id"],
+        piece=data["piece"],
+        start=tuple(data["start"]),
+        end=tuple(data["end"]),
+        dispatch_ms=data["dispatch_ms"],
+        arrival=data["arrival"],
+    )
+
+
+def _decode_jump_dto(data: dict) -> JumpDTO:
+    return JumpDTO(
+        jump_id=data["jump_id"],
+        piece=data["piece"],
+        cell=tuple(data["cell"]),
+        end_time=data["end_time"],
+    )
+
+
+def _decode_game_state_event(data: dict) -> GameStateEvent:
+    selected_cell = data["selected_cell"]
+    return GameStateEvent(
+        clock_ms=data["clock_ms"],
+        board_tokens=tuple(tuple(row) for row in data["board_tokens"]),
+        board_height=data["board_height"],
+        board_width=data["board_width"],
+        active_moves=tuple(_decode_move_dto(m) for m in data["active_moves"]),
+        active_jumps=tuple(_decode_jump_dto(j) for j in data["active_jumps"]),
+        selected_cell=tuple(selected_cell) if selected_cell is not None else None,
+        game_over=data["game_over"],
+        empty_token=data["empty_token"],
+    )
+
+
 _DECODERS = {
     "click": lambda data: ClickCommand(x=data["x"], y=data["y"]),
     "jump": lambda data: JumpCommand(x=data["x"], y=data["y"]),
     "error": lambda data: ErrorMessage(message=data["message"]),
+    "game_state": _decode_game_state_event,
 }
 
 
@@ -41,5 +84,5 @@ def decode(json_str: str) -> object:
 
     try:
         return decoder(data)
-    except KeyError as exc:
-        raise DecodeError(f"missing field {exc} for type {msg_type!r}") from exc
+    except (KeyError, TypeError, ValueError) as exc:
+        raise DecodeError(f"malformed payload for type {msg_type!r}: {exc}") from exc

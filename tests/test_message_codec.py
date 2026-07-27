@@ -75,3 +75,44 @@ def test_encode_game_state_event_round_trips_nested_dtos_through_dict_form():
         {"jump_id": "m2", "piece": "bP", "cell": [1, 1], "end_time": 500.0}
     ]
     assert payload["board_tokens"] == [["wR", ".", "."], [".", ".", "."]]
+
+
+def test_round_trip_game_state_event_with_move_and_jump():
+    move = MoveDTO(
+        move_id="m1", piece="wR", start=(0, 0), end=(0, 2),
+        dispatch_ms=0.0, arrival=1000.0,
+    )
+    jump = JumpDTO(jump_id="m2", piece="bP", cell=(1, 1), end_time=500.0)
+    original = GameStateEvent(
+        clock_ms=10.0,
+        board_tokens=(("wR", ".", "."), (".", ".", ".")),
+        board_height=2,
+        board_width=3,
+        active_moves=(move,),
+        active_jumps=(jump,),
+        selected_cell=(0, 0),
+        game_over=False,
+        empty_token=".",
+    )
+
+    decoded = decode(encode(original))
+
+    assert decoded == original
+
+
+def test_round_trip_game_state_event_with_no_selection():
+    original = GameStateEvent(
+        clock_ms=0.0,
+        board_tokens=((".", "."), (".", ".")),
+        board_height=2,
+        board_width=2,
+        active_moves=(),
+        active_jumps=(),
+        selected_cell=None,
+        game_over=True,
+        empty_token=".",
+    )
+
+    decoded = decode(encode(original))
+
+    assert decoded == original
