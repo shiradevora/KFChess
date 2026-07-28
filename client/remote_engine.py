@@ -12,17 +12,22 @@ import threading
 import time
 
 from ports.event_bus import EventBus
+from ports.game_engine_port import GameEnginePort
 from protocol.messages import ErrorMessage, GameStateEvent
 
 SERVER_EVENTS_TOPIC = "server_events"
 _POLL_INTERVAL_S = 0.02
 
 
-class RemoteGameEngine:
-    """Duck-types the local GameEngine interface that gui/app.py's App
-    depends on: .clock, .snapshot(), .active_moves, .active_jumps,
-    .selected, .game_over, .board_width, .board_height, .wait(dt_ms),
-    .handle_click(x, y), .handle_jump(x, y).
+class RemoteGameEngine(GameEnginePort):
+    """Implements GameEnginePort — the read-only state and command-dispatch
+    interface gui/app.py's App depends on: .clock, .snapshot(),
+    .active_moves, .active_jumps, .selected, .game_over, .board_width,
+    .board_height, .handle_click(x, y), .handle_jump(x, y).
+
+    Deliberately does NOT implement SelfTicking/.wait(): the clock is owned
+    by the server, not this adapter — state only advances when a new
+    GameStateEvent is received.
     """
 
     def __init__(self, gateway, event_bus: EventBus,
@@ -101,9 +106,6 @@ class RemoteGameEngine:
     # ------------------------------------------------------------------
     # Commands — forwarded to the server, never applied locally
     # ------------------------------------------------------------------
-
-    def wait(self, dt_ms: float) -> None:
-        pass  # state advances on the server; we only reflect the latest broadcast
 
     def handle_click(self, x: int, y: int) -> None:
         self._gateway.send_click(x, y)

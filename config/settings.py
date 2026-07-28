@@ -35,3 +35,6 @@ EMPTY_CELL = "."
 WS_HOST = "localhost"
 WS_PORT = 8765
 SERVER_TICK_MS = 50
+
+# SQLite database file for user accounts (stage B2)
+DB_PATH = "kfchess.db"

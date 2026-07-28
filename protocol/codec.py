@@ -13,7 +13,10 @@ from protocol.messages import (
     GameStateEvent,
     JumpCommand,
     JumpDTO,
+    LoginCommand,
+    MessageType,
     MoveDTO,
+    RegisterCommand,
 )
 
 
@@ -61,10 +64,12 @@ def _decode_game_state_event(data: dict) -> GameStateEvent:
 
 
 _DECODERS = {
-    "click": lambda data: ClickCommand(x=data["x"], y=data["y"]),
-    "jump": lambda data: JumpCommand(x=data["x"], y=data["y"]),
-    "error": lambda data: ErrorMessage(message=data["message"]),
-    "game_state": _decode_game_state_event,
+    MessageType.CLICK: lambda data: ClickCommand(x=data["x"], y=data["y"]),
+    MessageType.JUMP: lambda data: JumpCommand(x=data["x"], y=data["y"]),
+    MessageType.ERROR: lambda data: ErrorMessage(message=data["message"]),
+    MessageType.GAME_STATE: _decode_game_state_event,
+    MessageType.LOGIN: lambda data: LoginCommand(username=data["username"], password=data["password"]),
+    MessageType.REGISTER: lambda data: RegisterCommand(username=data["username"], password=data["password"]),
 }
 
 
@@ -77,10 +82,12 @@ def decode(json_str: str) -> object:
     if not isinstance(data, dict) or "type" not in data:
         raise DecodeError("missing 'type' field")
 
-    msg_type = data["type"]
-    decoder = _DECODERS.get(msg_type)
-    if decoder is None:
-        raise DecodeError(f"unrecognized 'type': {msg_type!r}")
+    try:
+        msg_type = MessageType(data["type"])
+    except ValueError:
+        raise DecodeError(f"unrecognized 'type': {data['type']!r}")
+
+    decoder = _DECODERS[msg_type]
 
     try:
         return decoder(data)

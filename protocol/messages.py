@@ -13,20 +13,48 @@ versioning/discrimination concerns the domain has no business knowing about.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
+
+
+class MessageType(str, Enum):
+    """str subclass Enum: instances serialize directly as plain strings via
+    json.dumps — no custom encoder needed, and equality/hashing still works
+    against plain string values for backward JSON compatibility.
+    """
+    CLICK = "click"
+    JUMP = "jump"
+    GAME_STATE = "game_state"
+    ERROR = "error"
+    LOGIN = "login"
+    REGISTER = "register"
 
 
 @dataclass(frozen=True)
 class ClickCommand:
     x: int
     y: int
-    type: str = "click"
+    type: MessageType = MessageType.CLICK
 
 
 @dataclass(frozen=True)
 class JumpCommand:
     x: int
     y: int
-    type: str = "jump"
+    type: MessageType = MessageType.JUMP
+
+
+@dataclass(frozen=True)
+class LoginCommand:
+    username: str
+    password: str
+    type: MessageType = MessageType.LOGIN
+
+
+@dataclass(frozen=True)
+class RegisterCommand:
+    username: str
+    password: str
+    type: MessageType = MessageType.REGISTER
 
 
 @dataclass(frozen=True)
@@ -58,10 +86,10 @@ class GameStateEvent:
     selected_cell: tuple | None
     game_over:     bool
     empty_token:   str
-    type:          str = "game_state"
+    type:          MessageType = MessageType.GAME_STATE
 
 
 @dataclass(frozen=True)
 class ErrorMessage:
     message: str
-    type:    str = "error"
+    type:    MessageType = MessageType.ERROR

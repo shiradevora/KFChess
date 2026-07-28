@@ -140,6 +140,14 @@ def test_send_click_and_send_jump_are_no_ops_before_connect():
     gateway.send_jump(30, 40)
 
 
+def test_send_credentials_login_and_send_register_are_no_ops_before_connect():
+    bus = InMemoryEventBus()
+    gateway = ServerGateway("localhost", 0, bus, NullLogger())
+
+    gateway.send_credentials_login("alice", "hunter2")
+    gateway.send_register("bob", "hunter3")
+
+
 def test_rapid_back_to_back_sends_are_both_delivered_in_order_not_dropped():
     """Regression test for the run_coroutine_threadsafe-per-send race: two
     outgoing commands enqueued back-to-back, before the writer has had a
@@ -174,3 +182,70 @@ def test_rapid_back_to_back_sends_are_both_delivered_in_order_not_dropped():
     first, second = connection.outbound
     assert '"type": "click"' in first
     assert '"type": "jump"' in second
+
+
+def test_rapid_back_to_back_sends_including_login_are_delivered_in_order():
+    """Same regression coverage as above, extended to send_credentials_login:
+    it must go through the same _outbox queue/writer path as send_click/
+    send_jump, not a separate direct send — otherwise it could race with
+    them."""
+    bus = InMemoryEventBus()
+    gateway = ServerGateway("localhost", 0, bus, NullLogger())
+    connection = FakeConnection()
+
+    async def scenario():
+        gateway._loop = asyncio.get_event_loop()
+        gateway._outbox = asyncio.Queue()
+        gateway._connection = connection
+
+        writer_task = asyncio.ensure_future(gateway._writer(connection))
+
+        gateway.send_credentials_login("alice", "hunter2")
+        gateway.send_click(1, 2)
+        gateway.send_jump(3, 4)
+
+        await asyncio.sleep(0.05)
+        writer_task.cancel()
+        try:
+            await writer_task
+        except asyncio.CancelledError:
+            pass
+
+    run_async(scenario())
+
+    assert len(connection.outbound) == 3
+    first, second, third = connection.outbound
+    assert '"type": "login"' in first
+    assert '"type": "click"' in second
+    assert '"type": "jump"' in third
+
+
+def test_rapid_back_to_back_send_register_is_delivered_through_same_writer():
+    """Same regression coverage, for send_register."""
+    bus = InMemoryEventBus()
+    gateway = ServerGateway("localhost", 0, bus, NullLogger())
+    connection = FakeConnection()
+
+    async def scenario():
+        gateway._loop = asyncio.get_event_loop()
+        gateway._outbox = asyncio.Queue()
+        gateway._connection = connection
+
+        writer_task = asyncio.ensure_future(gateway._writer(connection))
+
+        gateway.send_register("alice", "hunter2")
+        gateway.send_click(1, 2)
+
+        await asyncio.sleep(0.05)
+        writer_task.cancel()
+        try:
+            await writer_task
+        except asyncio.CancelledError:
+            pass
+
+    run_async(scenario())
+
+    assert len(connection.outbound) == 2
+    first, second = connection.outbound
+    assert '"type": "register"' in first
+    assert '"type": "click"' in second

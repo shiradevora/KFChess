@@ -9,7 +9,9 @@ from protocol.messages import (
     GameStateEvent,
     JumpCommand,
     JumpDTO,
+    LoginCommand,
     MoveDTO,
+    RegisterCommand,
 )
 
 
@@ -23,6 +25,33 @@ def test_round_trip_jump_command():
     original = JumpCommand(x=50, y=350)
     decoded = decode(encode(original))
     assert decoded == original
+
+
+def test_round_trip_login_command():
+    original = LoginCommand(username="shira", password="hunter2")
+    decoded = decode(encode(original))
+    assert decoded == original
+
+
+def test_round_trip_register_command():
+    original = RegisterCommand(username="shira", password="hunter2")
+    decoded = decode(encode(original))
+    assert decoded == original
+
+
+def test_decode_raises_on_login_command_missing_username():
+    with pytest.raises(DecodeError):
+        decode(json.dumps({"type": "login", "password": "hunter2"}))
+
+
+def test_decode_raises_on_login_command_missing_password():
+    with pytest.raises(DecodeError):
+        decode(json.dumps({"type": "login", "username": "shira"}))
+
+
+def test_decode_raises_on_register_command_missing_password():
+    with pytest.raises(DecodeError):
+        decode(json.dumps({"type": "register", "username": "shira"}))
 
 
 def test_round_trip_error_message():

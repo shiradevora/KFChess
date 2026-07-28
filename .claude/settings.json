@@ -9,7 +9,9 @@
       "Bash(python -m pytest tests/test_connection_handler.py -v -W error::pytest.PytestUnraisableExceptionWarning)",
       "Bash(python -m pytest tests/test_connection_handler.py -v -s)",
       "Bash(python -m pytest tests/test_server_gateway.py -v -s)",
-      "Bash(python -m pip show pytest-cov)"
+      "Bash(python -m pip show pytest-cov)",
+      "Bash(python -m pytest smoke_test.py -q)",
+      "Bash(python -m pytest -q --ignore=smoke_test.py)"
     ]
   }
 }

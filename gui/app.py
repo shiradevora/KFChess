@@ -24,6 +24,7 @@ from game.engine import GameEngine
 from gui.asset_loader import Assets
 from gui.board_renderer import BoardRenderer, RenderFrame
 from gui.sprite_pool import SpritePool
+from ports.game_engine_port import SelfTicking
 
 _WINDOW     = "KungFu Chess"
 _TARGET_FPS = 30
@@ -65,9 +66,9 @@ class App:
         self._last_tick = time.monotonic()
 
     def run(self) -> None:
-        # הפרדה!!!
-        frame_w = self._engine.board_width  * self._assets.cell_px
-        frame_h = self._engine.board_height * self._assets.cell_px
+        frame_w, frame_h = self._renderer.frame_size(
+            self._engine.board_width, self._engine.board_height, self._assets.cell_px
+        )
 
         cv2.namedWindow(_WINDOW, cv2.WINDOW_NORMAL)
         self._fit_window(frame_w, frame_h)
@@ -78,7 +79,8 @@ class App:
             dt_ms   = int((now - self._last_tick) * 1000)
             self._last_tick = now
 
-            self._engine.wait(dt_ms)
+            if isinstance(self._engine, SelfTicking):
+                self._engine.wait(dt_ms)
 
             render_frame = self._build_render_frame()
             output = self._renderer.render(render_frame)

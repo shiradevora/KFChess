@@ -33,9 +33,10 @@ from game.command_dispatcher import CommandDispatcher
 from game.exceptions import GameOverError, InvalidMoveError
 from game.move_resolver import MoveResolver
 from game.state_snapshot import GameStateSnapshot
+from ports.game_engine_port import GameEnginePort, SelfTicking
 
 
-class GameEngine:
+class GameEngine(GameEnginePort, SelfTicking):
 
     def __init__(self, board, rule_registry, win_condition, promotion_rule, config,
                  id_factory: Callable[[], str] = None):

@@ -51,6 +51,11 @@ class BoardRenderer:
     its inputs — no instance state is mutated between frames.
     """
 
+    @staticmethod
+    def frame_size(board_width: int, board_height: int, cell_px: int) -> tuple[int, int]:
+        """Pixel (width, height) of a frame for a board of the given size."""
+        return board_width * cell_px, board_height * cell_px
+
     def render(self, rf: RenderFrame) -> np.ndarray:
         canvas = Img()
         canvas.img = rf.board_img.copy()
