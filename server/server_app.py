@@ -1,83 +1,44 @@
 """server/server_app.py
 
-Composition root for the WebSocket server. Board/registry/win_condition/
-promotion_rule/engine wiring mirrors main.py and main_gui.py exactly
-(same GameEngine(board=..., rule_registry=..., win_condition=...,
-promotion_rule=..., config=...) call); the board itself uses the standard
-starting position from main_gui.py since this entry point has no stdin
-board input to parse.
+Composition root for the WebSocket server.
+
+Stage C1 replaces the single global GameSession + ticker (a deliberate
+placeholder for earlier stages, when there was no matchmaking) with real
+per-match sessions: SessionRegistry creates a fresh GameSession (with its
+own ticker task) only once MatchmakingService pairs two players. There is
+no default session anymore — a connection only ever joins a session by
+being matched.
 """
 from __future__ import annotations
 
 import asyncio
 import logging
 
-from board.text_board import TextBoardRepresentation
 from config import settings
-from rules.game_conditions import KingCaptureWinCondition, LastRankPromotion
-from rules.rule_registry import build_default_registry
-from game.engine import GameEngine
 from application.auth_service import AuthService
-from application.game_session import GameSession
+from application.matchmaking_service import MatchmakingService
 from infrastructure.bus.in_memory_bus import InMemoryEventBus
 from infrastructure.persistence.sqlite_user_repository import SqliteUserRepository
 from infrastructure.websocket.ws_transport import WebSocketTransportServer
 from server.connection_handler import handle_connection
+from server.session_registry import SessionRegistry
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("kungfu_chess.server")
 
-_STARTING_BOARD = [
-    "bR bN bB bQ bK bB bN bR".split(),
-    "bP bP bP bP bP bP bP bP".split(),
-    ". . . . . . . .".split(),
-    ". . . . . . . .".split(),
-    ". . . . . . . .".split(),
-    ". . . . . . . .".split(),
-    "wP wP wP wP wP wP wP wP".split(),
-    "wR wN wB wQ wK wB wN wR".split(),
-]
-
-
-def _build_session() -> tuple:
-    """Build the single global GameSession used by the entire server process.
-
-    PLACEHOLDER for this development stage (network plumbing only): every
-    connecting client joins this one shared session. There is no player
-    pairing, matchmaking, or per-match session lifecycle yet — all
-    connections interact with the same board and the same engine state.
-    This is intentional for now. Once matchmaking is implemented, this
-    function will be replaced by a MatchmakingService that creates a fresh
-    GameSession (with its own ticker, per _run_ticker) for each matched
-    pair of players.
-    """
-    board = TextBoardRepresentation(_STARTING_BOARD, empty_token=settings.EMPTY_CELL)
-    engine = GameEngine(
-        board=board,
-        rule_registry=build_default_registry(settings),
-        win_condition=KingCaptureWinCondition(),
-        promotion_rule=LastRankPromotion(),
-        config=settings,
-    )
-    bus = InMemoryEventBus()
-    session = GameSession(session_id="default", engine=engine, event_bus=bus)
-    return session, bus
-
-
-async def _run_ticker(session: GameSession) -> None:
-    while True:
-        await asyncio.sleep(settings.SERVER_TICK_MS / 1000)
-        session.tick(settings.SERVER_TICK_MS)
-
 
 async def run() -> None:
-    # NOTE: creates ONE global session/ticker for ALL clients that ever
-    # connect to this server process, regardless of how many players are
-    # connected (including zero). This is a deliberate placeholder for the
-    # current stage; see _build_session() docstring. In a future step this
-    # will be replaced by per-match session creation driven by a
-    # MatchmakingService, once a pair of players is matched.
-    session, bus = _build_session()
+    bus = InMemoryEventBus()
+    session_registry = SessionRegistry(bus)
+
+    # session_factory ignores the two usernames it's given: session/engine
+    # creation itself doesn't need to know who's playing (game logic stays
+    # unaware of usernames, same as every earlier stage) — only
+    # MatchmakingService needs the usernames, to report each player's
+    # opponent back to them.
+    matchmaking_service = MatchmakingService(
+        session_factory=lambda user_a, user_b: session_registry.create_session(),
+    )
 
     # One shared UserRepository + AuthService for the whole server process —
     # not one per connection. ensure_schema() only needs to run once, before
@@ -89,12 +50,19 @@ async def run() -> None:
     transport = WebSocketTransportServer(settings.WS_HOST, settings.WS_PORT)
 
     async def on_connect(connection):
-        await handle_connection(connection, session, bus, logger, auth_service)
+        await handle_connection(
+            connection, bus, logger, auth_service,
+            matchmaking_service, session_registry, user_repository,
+        )
 
     await transport.start(on_connect=on_connect)
     logger.info("WebSocket server listening on ws://%s:%s", settings.WS_HOST, settings.WS_PORT)
 
-    await _run_ticker(session)
+    # Nothing left to await forever on here: each match now drives its own
+    # ticker task (started by SessionRegistry.create_session), not a single
+    # process-wide ticker. Block forever so the process stays up to accept
+    # connections.
+    await asyncio.Event().wait()
 
 
 if __name__ == "__main__":

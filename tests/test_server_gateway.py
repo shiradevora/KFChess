@@ -146,6 +146,7 @@ def test_send_credentials_login_and_send_register_are_no_ops_before_connect():
 
     gateway.send_credentials_login("alice", "hunter2")
     gateway.send_register("bob", "hunter3")
+    gateway.send_play()
 
 
 def test_rapid_back_to_back_sends_are_both_delivered_in_order_not_dropped():
@@ -248,4 +249,35 @@ def test_rapid_back_to_back_send_register_is_delivered_through_same_writer():
     assert len(connection.outbound) == 2
     first, second = connection.outbound
     assert '"type": "register"' in first
+    assert '"type": "click"' in second
+
+
+def test_rapid_back_to_back_send_play_is_delivered_through_same_writer():
+    """Same regression coverage, for send_play."""
+    bus = InMemoryEventBus()
+    gateway = ServerGateway("localhost", 0, bus, NullLogger())
+    connection = FakeConnection()
+
+    async def scenario():
+        gateway._loop = asyncio.get_event_loop()
+        gateway._outbox = asyncio.Queue()
+        gateway._connection = connection
+
+        writer_task = asyncio.ensure_future(gateway._writer(connection))
+
+        gateway.send_play()
+        gateway.send_click(1, 2)
+
+        await asyncio.sleep(0.05)
+        writer_task.cancel()
+        try:
+            await writer_task
+        except asyncio.CancelledError:
+            pass
+
+    run_async(scenario())
+
+    assert len(connection.outbound) == 2
+    first, second = connection.outbound
+    assert '"type": "play"' in first
     assert '"type": "click"' in second

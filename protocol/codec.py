@@ -8,14 +8,17 @@ import dataclasses
 import json
 
 from protocol.messages import (
+    AuthSuccessEvent,
     ClickCommand,
     ErrorMessage,
     GameStateEvent,
     JumpCommand,
     JumpDTO,
     LoginCommand,
+    MatchFoundEvent,
     MessageType,
     MoveDTO,
+    PlayCommand,
     RegisterCommand,
 )
 
@@ -70,6 +73,10 @@ _DECODERS = {
     MessageType.GAME_STATE: _decode_game_state_event,
     MessageType.LOGIN: lambda data: LoginCommand(username=data["username"], password=data["password"]),
     MessageType.REGISTER: lambda data: RegisterCommand(username=data["username"], password=data["password"]),
+    MessageType.AUTH_SUCCESS: lambda data: AuthSuccessEvent(username=data["username"]),
+    MessageType.PLAY: lambda data: PlayCommand(),
+    MessageType.MATCH_FOUND: lambda data: MatchFoundEvent(
+        opponent_username=data["opponent_username"], session_id=data["session_id"]),
 }
 
 

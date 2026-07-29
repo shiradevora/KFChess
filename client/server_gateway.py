@@ -20,7 +20,7 @@ from infrastructure.websocket.ws_transport import WebSocketConnection
 from ports.event_bus import EventBus
 from ports.transport import Connection, ConnectionClosed
 from protocol.codec import DecodeError, decode, encode
-from protocol.messages import ClickCommand, JumpCommand, LoginCommand, RegisterCommand
+from protocol.messages import ClickCommand, JumpCommand, LoginCommand, PlayCommand, RegisterCommand
 
 SERVER_EVENTS_TOPIC = "server_events"
 
@@ -104,6 +104,9 @@ class ServerGateway:
 
     def send_credentials_login(self, username: str, password: str) -> None:
         self._send(LoginCommand(username=username, password=password))
+
+    def send_play(self) -> None:
+        self._send(PlayCommand())
 
     def send_click(self, x: int, y: int) -> None:
         self._send(ClickCommand(x=x, y=y))

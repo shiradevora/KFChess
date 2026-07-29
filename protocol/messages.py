@@ -27,6 +27,9 @@ class MessageType(str, Enum):
     ERROR = "error"
     LOGIN = "login"
     REGISTER = "register"
+    AUTH_SUCCESS = "auth_success"
+    PLAY = "play"
+    MATCH_FOUND = "match_found"
 
 
 @dataclass(frozen=True)
@@ -55,6 +58,30 @@ class RegisterCommand:
     username: str
     password: str
     type: MessageType = MessageType.REGISTER
+
+
+@dataclass(frozen=True)
+class AuthSuccessEvent:
+    """Sent once, right after a connection authenticates (via RegisterCommand
+    or LoginCommand): the only signal the client has that login/register
+    succeeded, now that authenticating no longer joins a default session
+    (there is no default session — see server/session_registry.py)."""
+    username: str
+    type: MessageType = MessageType.AUTH_SUCCESS
+
+
+@dataclass(frozen=True)
+class PlayCommand:
+    """Request to join the matchmaking queue. No fields — the server already
+    knows who's asking from the authenticated connection."""
+    type: MessageType = MessageType.PLAY
+
+
+@dataclass(frozen=True)
+class MatchFoundEvent:
+    opponent_username: str
+    session_id: str
+    type: MessageType = MessageType.MATCH_FOUND
 
 
 @dataclass(frozen=True)

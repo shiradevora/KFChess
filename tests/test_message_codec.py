@@ -4,13 +4,16 @@ import pytest
 
 from protocol.codec import DecodeError, decode, encode
 from protocol.messages import (
+    AuthSuccessEvent,
     ClickCommand,
     ErrorMessage,
     GameStateEvent,
     JumpCommand,
     JumpDTO,
     LoginCommand,
+    MatchFoundEvent,
     MoveDTO,
+    PlayCommand,
     RegisterCommand,
 )
 
@@ -52,6 +55,24 @@ def test_decode_raises_on_login_command_missing_password():
 def test_decode_raises_on_register_command_missing_password():
     with pytest.raises(DecodeError):
         decode(json.dumps({"type": "register", "username": "shira"}))
+
+
+def test_round_trip_auth_success_event():
+    original = AuthSuccessEvent(username="shira")
+    decoded = decode(encode(original))
+    assert decoded == original
+
+
+def test_round_trip_play_command():
+    original = PlayCommand()
+    decoded = decode(encode(original))
+    assert decoded == original
+
+
+def test_round_trip_match_found_event():
+    original = MatchFoundEvent(opponent_username="bob", session_id="abc-123")
+    decoded = decode(encode(original))
+    assert decoded == original
 
 
 def test_round_trip_error_message():
