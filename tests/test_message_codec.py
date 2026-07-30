@@ -111,6 +111,7 @@ def test_encode_game_state_event_round_trips_nested_dtos_through_dict_form():
         active_jumps=(jump,),
         selected_cell=None,
         game_over=False,
+        winner=None,
         empty_token=".",
     )
 
@@ -142,6 +143,7 @@ def test_round_trip_game_state_event_with_move_and_jump():
         active_jumps=(jump,),
         selected_cell=(0, 0),
         game_over=False,
+        winner=None,
         empty_token=".",
     )
 
@@ -160,6 +162,26 @@ def test_round_trip_game_state_event_with_no_selection():
         active_jumps=(),
         selected_cell=None,
         game_over=True,
+        winner=None,
+        empty_token=".",
+    )
+
+    decoded = decode(encode(original))
+
+    assert decoded == original
+
+
+def test_round_trip_game_state_event_with_a_winner():
+    original = GameStateEvent(
+        clock_ms=5000.0,
+        board_tokens=(("wK", "."), (".", ".")),
+        board_height=2,
+        board_width=2,
+        active_moves=(),
+        active_jumps=(),
+        selected_cell=None,
+        game_over=True,
+        winner="white",
         empty_token=".",
     )
 

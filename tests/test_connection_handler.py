@@ -145,6 +145,13 @@ class FakeUserRepository(UserRepository):
         self._users[username] = record
         return record
 
+    async def update_rating(self, username: str, new_rating: int) -> None:
+        record = self._users[username]
+        self._users[username] = UserRecord(
+            username=record.username, password_hash=record.password_hash,
+            salt=record.salt, rating=new_rating,
+        )
+
 
 class FakeMatchmakingService:
     """Returns a pre-set MatchResult immediately — no real queueing/pairing.
@@ -190,6 +197,7 @@ def _game_state_event(clock_ms: float) -> GameStateEvent:
         active_jumps=(),
         selected_cell=None,
         game_over=False,
+        winner=None,
         empty_token=".",
     )
 
@@ -222,7 +230,7 @@ def test_click_command_results_in_game_state_event_sent_back():
     connection = FakeConnection()
 
     async def scenario():
-        task = asyncio.ensure_future(_run_match_loop(connection, session, bus, NullLogger()))
+        task = asyncio.ensure_future(_run_match_loop(connection, session, bus, NullLogger(), "white"))
         await connection.inbound.put(encode(ClickCommand(x=0, y=0)))
         await asyncio.sleep(0.05)
         await connection.inbound.put(None)  # signal close
@@ -239,7 +247,7 @@ def test_malformed_json_gets_error_reply_and_does_not_stop_the_handler():
     connection = FakeConnection()
 
     async def scenario():
-        task = asyncio.ensure_future(_run_match_loop(connection, session, bus, NullLogger()))
+        task = asyncio.ensure_future(_run_match_loop(connection, session, bus, NullLogger(), "white"))
         await connection.inbound.put("{not valid json")
         await asyncio.sleep(0.05)
         await connection.inbound.put(encode(ClickCommand(x=0, y=0)))
@@ -272,7 +280,7 @@ def test_rapid_back_to_back_publishes_are_both_sent_in_order_not_dropped():
     topic = f"session:{session.session_id}"
 
     async def scenario():
-        task = asyncio.ensure_future(_run_match_loop(connection, session, bus, NullLogger()))
+        task = asyncio.ensure_future(_run_match_loop(connection, session, bus, NullLogger(), "white"))
         await asyncio.sleep(0)  # let _run_match_loop subscribe and start its writer
 
         # Two publishes with no await in between — this is exactly the
@@ -310,7 +318,7 @@ def test_malformed_message_and_bus_publish_on_the_same_tick_dont_race_the_writer
     topic = f"session:{session.session_id}"
 
     async def scenario():
-        task = asyncio.ensure_future(_run_match_loop(connection, session, bus, NullLogger()))
+        task = asyncio.ensure_future(_run_match_loop(connection, session, bus, NullLogger(), "white"))
         await asyncio.sleep(0)  # let _run_match_loop subscribe and start its writer
 
         # A malformed inbound message and a bus publish, back-to-back with
@@ -342,7 +350,7 @@ def test_handler_returns_cleanly_and_unsubscribes_when_send_raises_connection_cl
     topic = f"session:{session.session_id}"
 
     async def scenario():
-        task = asyncio.ensure_future(_run_match_loop(connection, session, bus, NullLogger()))
+        task = asyncio.ensure_future(_run_match_loop(connection, session, bus, NullLogger(), "white"))
         await asyncio.sleep(0)
 
         bus.publish(topic, _game_state_event(clock_ms=1.0))  # writer's send() raises, writer returns
@@ -356,6 +364,48 @@ def test_handler_returns_cleanly_and_unsubscribes_when_send_raises_connection_cl
     attempts_before = connection.send_attempts
     bus.publish(topic, _game_state_event(clock_ms=2.0))  # subscription should be gone by now
     assert connection.send_attempts == attempts_before
+
+
+def test_click_with_wrong_acting_color_is_rejected_by_the_session():
+    """make_session()'s board is all-white ("wR" pieces) — a connection
+    whose acting_color is resolved to "black" must have its click on that
+    white piece rejected, with no game_state reply at all (GameSession
+    never reaches _publish_state() for a rejected action)."""
+    session, bus = make_session()
+    connection = FakeConnection()
+
+    async def scenario():
+        task = asyncio.ensure_future(
+            _run_match_loop(connection, session, bus, NullLogger(), "black"))
+        await connection.inbound.put(encode(ClickCommand(x=0, y=0)))  # (0,0) holds "wR"
+        await asyncio.sleep(0.05)
+        await connection.inbound.put(None)
+        await task
+
+    run_async(scenario())
+
+    payloads = [json.loads(raw) for raw in connection.outbound]
+    assert len(payloads) == 1
+    assert payloads[0]["type"] == "error"
+
+
+def test_click_with_matching_acting_color_succeeds():
+    session, bus = make_session()
+    connection = FakeConnection()
+
+    async def scenario():
+        task = asyncio.ensure_future(
+            _run_match_loop(connection, session, bus, NullLogger(), "white"))
+        await connection.inbound.put(encode(ClickCommand(x=0, y=0)))  # (0,0) holds "wR"
+        await asyncio.sleep(0.05)
+        await connection.inbound.put(None)
+        await task
+
+    run_async(scenario())
+
+    payloads = [json.loads(raw) for raw in connection.outbound]
+    assert any(p.get("type") == "game_state" and p.get("selected_cell") == [0, 0]
+               for p in payloads)
 
 
 # ----------------------------------------------------------------------
@@ -465,17 +515,23 @@ def test_play_then_matched_then_click_is_processed_normally():
     async def scenario():
         # create_session() uses asyncio.create_task internally, so it needs
         # a running loop — it can't be called before run_async(scenario()).
-        session_id = session_registry.create_session()
+        session_id = session_registry.create_session("alice", "bob")
         session_ids.append(session_id)
         matchmaking_service = FakeMatchmakingService(
             MatchResult(matched=True, opponent_username="bob", session_id=session_id))
+
+        # Color assignment is random — click on whichever back-rank row
+        # actually belongs to alice's assigned color, so this test doesn't
+        # flake depending on the coin flip (see server/session_registry.py).
+        players = session_registry.get_players(session_id)
+        row = 7 if players.white_username == "alice" else 0
 
         task = asyncio.ensure_future(handle_connection(
             connection, bus, NullLogger(), auth_service, matchmaking_service,
             session_registry, user_repository))
         await connection.inbound.put(encode(RegisterCommand(username="alice", password="hunter2")))
         await connection.inbound.put(encode(PlayCommand()))
-        await connection.inbound.put(encode(ClickCommand(x=0, y=0)))
+        await connection.inbound.put(encode(ClickCommand(x=0, y=row * settings.CELL_SIZE)))
         await asyncio.sleep(0.05)
         await connection.inbound.put(None)
         await task
@@ -501,9 +557,15 @@ def test_play_timeout_then_retry_succeeds():
     async def scenario():
         # create_session() uses asyncio.create_task internally, so it needs
         # a running loop — it can't be called before run_async(scenario()).
-        session_id = session_registry.create_session()
+        session_id = session_registry.create_session("alice", "bob")
         matchmaking_service = TimeoutThenMatchService(
             MatchResult(matched=True, opponent_username="bob", session_id=session_id))
+
+        # Color assignment is random — click on whichever back-rank row
+        # actually belongs to alice's assigned color, so this test doesn't
+        # flake depending on the coin flip (see server/session_registry.py).
+        players = session_registry.get_players(session_id)
+        row = 7 if players.white_username == "alice" else 0
 
         task = asyncio.ensure_future(handle_connection(
             connection, bus, NullLogger(), auth_service, matchmaking_service,
@@ -512,7 +574,7 @@ def test_play_timeout_then_retry_succeeds():
         await connection.inbound.put(encode(PlayCommand()))  # times out — no match
         await asyncio.sleep(0.05)
         await connection.inbound.put(encode(PlayCommand()))  # retry — matches
-        await connection.inbound.put(encode(ClickCommand(x=0, y=0)))
+        await connection.inbound.put(encode(ClickCommand(x=0, y=row * settings.CELL_SIZE)))
         await asyncio.sleep(0.05)
         await connection.inbound.put(None)
         await task
@@ -552,3 +614,48 @@ def test_click_before_play_gets_rejection_not_crash():
     assert any(p["message"] == _NOT_IN_A_MATCH_MESSAGE for p in error_payloads)
     assert not any(p.get("type") == "game_state" for p in payloads)
     assert connection.closed is False
+
+
+def test_full_flow_rejects_click_on_opponents_color_and_accepts_own():
+    """End-to-end through handle_connection (not just _run_match_loop):
+    after being matched and colored, a click on the opponent's back rank
+    gets an error and no selection; a click on the player's own back rank
+    afterward succeeds and selects that piece."""
+    bus = InMemoryEventBus()
+    session_registry = SessionRegistry(bus)
+    connection = FakeConnection()
+    auth_service, user_repository = make_auth_service_and_repository()
+
+    async def scenario():
+        session_id = session_registry.create_session("alice", "bob")
+        players = session_registry.get_players(session_id)
+        alice_is_white = players.white_username == "alice"
+        # Row 7 is white's back rank, row 0 is black's, on the standard
+        # starting board SessionRegistry deals out.
+        own_row, opponent_row = (7, 0) if alice_is_white else (0, 7)
+
+        matchmaking_service = FakeMatchmakingService(
+            MatchResult(matched=True, opponent_username="bob", session_id=session_id))
+
+        task = asyncio.ensure_future(handle_connection(
+            connection, bus, NullLogger(), auth_service, matchmaking_service,
+            session_registry, user_repository))
+        await connection.inbound.put(encode(RegisterCommand(username="alice", password="hunter2")))
+        await connection.inbound.put(encode(PlayCommand()))
+        await connection.inbound.put(encode(ClickCommand(x=0, y=opponent_row * settings.CELL_SIZE)))
+        await asyncio.sleep(0.05)
+        await connection.inbound.put(encode(ClickCommand(x=0, y=own_row * settings.CELL_SIZE)))
+        await asyncio.sleep(0.05)
+        await connection.inbound.put(None)
+        await task
+
+        return own_row
+
+    own_row = run_async(scenario())
+
+    payloads = [json.loads(raw) for raw in connection.outbound]
+    error_payloads = [p for p in payloads if p.get("type") == "error"]
+    game_state_payloads = [p for p in payloads if p.get("type") == "game_state"]
+
+    assert any(p["message"] == "That's not your piece to move." for p in error_payloads)
+    assert any(p.get("selected_cell") == [own_row, 0] for p in game_state_payloads)

@@ -34,6 +34,11 @@ class GameStateSnapshot:
     active_jumps  : tuple of Jump objects currently active
     selected_cell : (row, col) of the currently selected piece, or None
     game_over     : True once a win condition has been triggered
+    winner        : "white"/"black" once game_over is True, else None.
+                    This engine has no draw outcome (see
+                    rules/game_conditions.py's KingCaptureWinCondition) — a
+                    game only ends via a king capture, so "white"/"black"/
+                    None is the complete set of possible values.
     empty_token   : the string used to represent an empty cell
     """
     clock_ms:      float
@@ -44,4 +49,5 @@ class GameStateSnapshot:
     active_jumps:  tuple
     selected_cell: tuple | None
     game_over:     bool
+    winner:        str | None
     empty_token:   str

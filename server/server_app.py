@@ -17,6 +17,7 @@ import logging
 from config import settings
 from application.auth_service import AuthService
 from application.matchmaking_service import MatchmakingService
+from application.rating_update_service import RatingUpdateService
 from infrastructure.bus.in_memory_bus import InMemoryEventBus
 from infrastructure.persistence.sqlite_user_repository import SqliteUserRepository
 from infrastructure.websocket.ws_transport import WebSocketTransportServer
@@ -31,21 +32,33 @@ async def run() -> None:
     bus = InMemoryEventBus()
     session_registry = SessionRegistry(bus)
 
-    # session_factory ignores the two usernames it's given: session/engine
-    # creation itself doesn't need to know who's playing (game logic stays
-    # unaware of usernames, same as every earlier stage) — only
-    # MatchmakingService needs the usernames, to report each player's
-    # opponent back to them.
-    matchmaking_service = MatchmakingService(
-        session_factory=lambda user_a, user_b: session_registry.create_session(),
-    )
-
     # One shared UserRepository + AuthService for the whole server process —
     # not one per connection. ensure_schema() only needs to run once, before
     # any connection can authenticate against it.
     user_repository = SqliteUserRepository(settings.DB_PATH)
     await user_repository.ensure_schema()
     auth_service = AuthService(user_repository)
+
+    # RatingUpdateService is wired independently of SessionRegistry/
+    # GameSession: it only ever watches a session's topic like any other
+    # subscriber, via subscribe_to(). Composing that call into the
+    # session_factory below (rather than teaching SessionRegistry about
+    # rating updates) keeps SessionRegistry's responsibilities limited to
+    # session/ticker/player-mapping lifecycle, nothing else.
+    rating_update_service = RatingUpdateService(bus, user_repository, session_registry, logger)
+
+    def _create_session_and_subscribe(user_a: str, user_b: str) -> str:
+        session_id = session_registry.create_session(user_a, user_b)
+        rating_update_service.subscribe_to(session_id)
+        return session_id
+
+    # Stage C2: session creation now needs both usernames too, to assign
+    # colors (SessionRegistry.create_session randomly assigns one to white,
+    # one to black) — game logic itself still stays unaware of usernames
+    # (GameSession only ever sees colors), but SessionRegistry, which owns
+    # session creation, is the natural place to hold the session_id ->
+    # players mapping.
+    matchmaking_service = MatchmakingService(session_factory=_create_session_and_subscribe)
 
     transport = WebSocketTransportServer(settings.WS_HOST, settings.WS_PORT)
 

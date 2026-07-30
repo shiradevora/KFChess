@@ -23,7 +23,8 @@ class FakeGateway:
 
 
 def _event(clock_ms, board_tokens, board_width, board_height,
-           active_moves=(), active_jumps=(), selected_cell=None, game_over=False):
+           active_moves=(), active_jumps=(), selected_cell=None, game_over=False,
+           winner=None):
     return GameStateEvent(
         clock_ms=clock_ms,
         board_tokens=board_tokens,
@@ -33,6 +34,7 @@ def _event(clock_ms, board_tokens, board_width, board_height,
         active_jumps=active_jumps,
         selected_cell=selected_cell,
         game_over=game_over,
+        winner=winner,
         empty_token=".",
     )
 

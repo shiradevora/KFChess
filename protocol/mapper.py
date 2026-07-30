@@ -40,5 +40,6 @@ def snapshot_to_event(snapshot: GameStateSnapshot) -> GameStateEvent:
         active_jumps=active_jumps,
         selected_cell=snapshot.selected_cell,
         game_over=snapshot.game_over,
+        winner=snapshot.winner,
         empty_token=snapshot.empty_token,
     )

@@ -29,3 +29,7 @@ class UserRepository(ABC):
     @abstractmethod
     async def create_user(self, username: str, password_hash: str, salt: str) -> UserRecord:
         raise NotImplementedError
+
+    @abstractmethod
+    async def update_rating(self, username: str, new_rating: int) -> None:
+        raise NotImplementedError

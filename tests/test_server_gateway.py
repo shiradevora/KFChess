@@ -51,6 +51,7 @@ def _game_state_event(clock_ms: float = 1.0) -> GameStateEvent:
         active_jumps=(),
         selected_cell=None,
         game_over=False,
+        winner=None,
         empty_token=".",
     )
 

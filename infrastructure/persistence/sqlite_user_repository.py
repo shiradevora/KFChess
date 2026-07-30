@@ -46,6 +46,9 @@ class SqliteUserRepository(UserRepository):
     async def create_user(self, username: str, password_hash: str, salt: str) -> UserRecord:
         return await self._run(self._create_user_sync, username, password_hash, salt)
 
+    async def update_rating(self, username: str, new_rating: int) -> None:
+        await self._run(self._update_rating_sync, username, new_rating)
+
     async def _run(self, func, *args):
         # get_running_loop() (not stored at construction time) since this
         # repository may be constructed before the event loop is running.
@@ -96,3 +99,14 @@ class SqliteUserRepository(UserRepository):
         finally:
             conn.close()
         return UserRecord(username=username, password_hash=password_hash, salt=salt, rating=1200)
+
+    def _update_rating_sync(self, username: str, new_rating: int) -> None:
+        conn = self._connect()
+        try:
+            conn.execute(
+                "UPDATE users SET rating = ? WHERE username = ?",
+                (new_rating, username),
+            )
+            conn.commit()
+        finally:
+            conn.close()

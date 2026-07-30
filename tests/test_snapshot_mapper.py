@@ -4,7 +4,8 @@ from protocol.mapper import snapshot_to_event
 from protocol.messages import JumpDTO, MoveDTO
 
 
-def make_snapshot(active_moves=(), active_jumps=(), selected_cell=None, game_over=False):
+def make_snapshot(active_moves=(), active_jumps=(), selected_cell=None, game_over=False,
+                   winner=None):
     return GameStateSnapshot(
         clock_ms=0.0,
         board_tokens=(("wR", "."), (".", ".")),
@@ -14,6 +15,7 @@ def make_snapshot(active_moves=(), active_jumps=(), selected_cell=None, game_ove
         active_jumps=active_jumps,
         selected_cell=selected_cell,
         game_over=game_over,
+        winner=winner,
         empty_token=".",
     )
 
@@ -29,6 +31,16 @@ def test_snapshot_with_no_activity_maps_to_empty_tuples():
     assert event.clock_ms == snapshot.clock_ms
     assert event.selected_cell is None
     assert event.game_over is False
+    assert event.winner is None
+
+
+def test_snapshot_with_a_winner_maps_it_through():
+    snapshot = make_snapshot(game_over=True, winner="black")
+
+    event = snapshot_to_event(snapshot)
+
+    assert event.game_over is True
+    assert event.winner == "black"
 
 
 def test_snapshot_with_one_move_and_one_jump_maps_every_field():

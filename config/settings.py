@@ -22,6 +22,12 @@ def move_duration(start: tuple, end: tuple) -> float:
 # Player colors supported by the game
 COLORS = ("w", "b")
 
+# Full color names, keyed by the single-letter token prefix ("wR" -> "w" ->
+# "white"). Used wherever a color needs to cross a boundary that shouldn't
+# know about token-string conventions (e.g. GameStateEvent.winner, match
+# color assignment) — "white"/"black" are the vocabulary those layers speak.
+COLOR_NAMES = {"w": "white", "b": "black"}
+
 # Row delta a pawn advances by on a single step, per color
 PAWN_DIRECTION = {"w": -1, "b": 1}
 

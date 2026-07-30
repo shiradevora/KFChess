@@ -61,6 +61,12 @@ class CommandDispatcher:
     def selected(self) -> tuple | None:
         return self._selected
 
+    def cell_at(self, x: int, y: int) -> tuple | None:
+        """Public entry point for pixel->cell conversion, so callers outside
+        this class (e.g. GameEngine.cell_at) can reuse it instead of
+        duplicating the CELL_SIZE-based math."""
+        return self._pixel_to_cell(x, y)
+
     # ------------------------------------------------------------------
     # Public dispatch methods (called by the Controller / GUI)
     # ------------------------------------------------------------------

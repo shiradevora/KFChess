@@ -112,6 +112,7 @@ class GameStateEvent:
     active_jumps:  tuple
     selected_cell: tuple | None
     game_over:     bool
+    winner:        str | None
     empty_token:   str
     type:          MessageType = MessageType.GAME_STATE
 

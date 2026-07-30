@@ -41,6 +41,7 @@ def test_remote_game_engine_conforms_to_game_engine_port():
         board_height=2, board_width=2,
         active_moves=(), active_jumps=(),
         selected_cell=None, game_over=False,
+        winner=None,
         empty_token=".",
     )
 

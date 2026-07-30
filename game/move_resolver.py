@@ -35,6 +35,7 @@ class MoveResolver:
         self._active_moves:  list[Move] = []
         self._active_jumps:  list[Jump] = []
         self._game_over:     bool       = False
+        self._winner:        str | None = None
         self._cooldowns:     dict[tuple, float] = {}  # cell -> cooldown_end_ms
 
     # ------------------------------------------------------------------
@@ -44,6 +45,15 @@ class MoveResolver:
     @property
     def game_over(self) -> bool:
         return self._game_over
+
+    @property
+    def winner(self) -> str | None:
+        """The winning color ("white"/"black"), or None while the game is
+        still in progress. This engine has no draw outcome — a game only
+        ever ends via a king capture (see rules/game_conditions.py's
+        KingCaptureWinCondition), so once game_over is True this is always
+        set, never left None."""
+        return self._winner
 
     @property
     def clock_ms(self) -> float:
@@ -128,6 +138,7 @@ class MoveResolver:
         captured = None if target == self._config.EMPTY_CELL else target
         if self._win_condition.is_game_over(captured):
             self._game_over = True
+            self._winner = self._config.COLOR_NAMES[move.piece[0]]
 
         piece = self._promotion_rule.promote(move.piece, r, self._board.height)
         self._board.set(r, c, piece)

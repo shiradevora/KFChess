@@ -159,7 +159,7 @@ async def _lobby(connection: Connection, username: str, logger,
 
 
 async def _run_match_loop(connection: Connection, session: GameSession,
-                           event_bus: EventBus, logger) -> None:
+                           event_bus: EventBus, logger, acting_color: str) -> None:
     """Bridge a connection to its matched GameSession for the rest of the
     connection's lifetime: outbound events on the session's bus topic are
     forwarded to the socket; inbound click/jump commands are dispatched to
@@ -167,6 +167,12 @@ async def _run_match_loop(connection: Connection, session: GameSession,
     handle_connection() and tests that only care about this mechanic (not
     authentication or matchmaking) can call it directly with a
     directly-constructed session.
+
+    acting_color ("white"/"black") is resolved once by the caller (this
+    connection's color for this match never changes) and passed through to
+    every click/jump dispatched to the session, so GameSession can reject
+    an attempt to move the opponent's pieces without itself knowing
+    anything about usernames.
     """
     outbox: asyncio.Queue = asyncio.Queue()
 
@@ -203,9 +209,9 @@ async def _run_match_loop(connection: Connection, session: GameSession,
                 continue
 
             if isinstance(message, ClickCommand):
-                session.handle_click(message.x, message.y)
+                session.handle_click(message.x, message.y, acting_color)
             elif isinstance(message, JumpCommand):
-                session.handle_jump(message.x, message.y)
+                session.handle_jump(message.x, message.y, acting_color)
     finally:
         subscription.unsubscribe()
         writer_task.cancel()
@@ -232,4 +238,7 @@ async def handle_connection(connection: Connection, event_bus: EventBus, logger,
     if session is None:
         return
 
-    await _run_match_loop(connection, session, event_bus, logger)
+    players = session_registry.get_players(session.session_id)
+    acting_color = "white" if players.white_username == username else "black"
+
+    await _run_match_loop(connection, session, event_bus, logger, acting_color)

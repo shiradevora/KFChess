@@ -67,8 +67,26 @@ class GameEngine(GameEnginePort, SelfTicking):
             active_jumps  = self._resolver.active_jumps,
             selected_cell = self._dispatcher.selected,
             game_over     = self._resolver.game_over,
+            winner        = self._resolver.winner,
             empty_token   = self._config.EMPTY_CELL,
         )
+
+    def color_at(self, row: int, col: int) -> str | None:
+        """Return "white"/"black" for the piece at (row, col), or None if
+        the cell is empty. Centralizes the "first character of a piece
+        token is its color" convention already used ad hoc throughout
+        game/rules — the one place that needs to ask this as a named
+        operation (application/game_session.py's color-of-mover check)
+        goes through here instead of inlining token[0] itself."""
+        token = self._board.get(row, col)
+        if token == self._config.EMPTY_CELL:
+            return None
+        return self._config.COLOR_NAMES[token[0]]
+
+    def cell_at(self, x: int, y: int) -> tuple | None:
+        """Pixel -> (row, col), or None if out of bounds. Delegates to
+        CommandDispatcher's existing conversion rather than duplicating it."""
+        return self._dispatcher.cell_at(x, y)
 
     def dispatch_click(self, x: int, y: int) -> None:
         """Translate a pixel click and dispatch the resulting command."""

@@ -20,6 +20,13 @@ class FakeUserRepository(UserRepository):
         self._users[username] = record
         return record
 
+    async def update_rating(self, username: str, new_rating: int) -> None:
+        record = self._users[username]
+        self._users[username] = UserRecord(
+            username=record.username, password_hash=record.password_hash,
+            salt=record.salt, rating=new_rating,
+        )
+
 
 def run_async(coro):
     return asyncio.get_event_loop().run_until_complete(coro)

@@ -62,6 +62,7 @@ def _decode_game_state_event(data: dict) -> GameStateEvent:
         active_jumps=tuple(_decode_jump_dto(j) for j in data["active_jumps"]),
         selected_cell=tuple(selected_cell) if selected_cell is not None else None,
         game_over=data["game_over"],
+        winner=data["winner"],
         empty_token=data["empty_token"],
     )
 
